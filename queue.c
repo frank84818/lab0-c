@@ -11,6 +11,7 @@
  */
 
 
+
 /* Create an empty queue */
 struct list_head *q_new()
 {
@@ -93,7 +94,12 @@ bool q_insert_head(struct list_head *head, char *s)
 /* Insert an element at tail of queue */
 bool q_insert_tail(struct list_head *head, char *s)
 {
-    return true;
+    if (!head)
+        return false;
+
+    return q_insert_head(head->prev, s);
+
+    // return true;
 }
 
 /* Remove an element from head of queue */
