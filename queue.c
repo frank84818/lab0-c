@@ -16,20 +16,77 @@ struct list_head *q_new()
 {
     struct list_head *head =
         (struct list_head *) malloc(sizeof(struct list_head) * 1);
-    if (!head)
+    if (!head) {
+        free(head);
         return NULL;
+    }
 
-    head->next = head;
-    head->prev = head;
+
+    INIT_LIST_HEAD(head);
     return head;
 }
 
 /* Free all storage used by queue */
-void q_free(struct list_head *head) {}
+void q_free(struct list_head *head)
+{
+    // Check if head point to NULL
+    if (!head)
+        return;
+
+    // Check if head point to an empty list
+    // Actually, this step is not necessary because the iteration below will do
+    // nothing if the list is empty.
+    if (list_empty(head)) {
+        free(head);  // Even list_empty return true, there is still a dummpy
+                     // list_head.
+        return;
+    }
+
+    struct list_head *iter = NULL, *safe = NULL;
+
+    list_for_each_safe (iter, safe, head)
+        q_release_element(list_entry(iter, element_t, list));
+
+    free(head);
+}
 
 /* Insert an element at head of queue */
 bool q_insert_head(struct list_head *head, char *s)
 {
+    if (!head)
+        return false;
+    element_t *new_e = malloc(sizeof(element_t));
+    if (!new_e) {
+        free(new_e);
+        return false;
+    }
+    INIT_LIST_HEAD(&new_e->list);
+
+    /*
+    The error msg implies there are some problemes about the lifetime of pointer
+    to char s. If I just assign the value of s to new_e->value, new_e->value
+    will point to a memory location which will be free after q_insert_head
+    function.
+    */
+    // new_e->value = s; // Error msg: Need to allocate and copy string for new
+
+    /*
+    Copy s and assign to new_e->value
+    */
+    size_t len = 0;
+    while (s[len])
+        len++;
+    new_e->value = malloc(sizeof(*s) * (len + 1));
+    char *iter = new_e->value;
+    while (*s) {
+        *iter++ = *s++;
+    }
+    *iter = '\0';  // Add string end
+
+
+    list_add(&new_e->list, head);
+
+
     return true;
 }
 
