@@ -21,8 +21,6 @@ struct list_head *q_new()
         free(head);
         return NULL;
     }
-
-
     INIT_LIST_HEAD(head);
     return head;
 }
@@ -98,26 +96,42 @@ bool q_insert_tail(struct list_head *head, char *s)
         return false;
 
     return q_insert_head(head->prev, s);
-
-    // return true;
 }
 
 /* Remove an element from head of queue */
 element_t *q_remove_head(struct list_head *head, char *sp, size_t bufsize)
 {
-    return NULL;
+    if (!head || list_empty(head))
+        return NULL;
+
+    element_t *ele = list_entry(head->next, element_t, list);
+    list_del_init(head->next);
+
+    if (sp) {
+        strncpy(sp, ele->value, bufsize - 1);
+        sp[bufsize - 1] = '\0';
+    }
+    return ele;
 }
 
 /* Remove an element from tail of queue */
 element_t *q_remove_tail(struct list_head *head, char *sp, size_t bufsize)
 {
-    return NULL;
+    return q_remove_head(head->prev->prev, sp, bufsize);
 }
 
 /* Return number of elements in queue */
 int q_size(struct list_head *head)
 {
-    return -1;
+    if (!head) {
+        return -1;
+    }
+    int size = 0;
+
+    struct list_head *iter = NULL;
+    list_for_each (iter, head)
+        size++;
+    return size;
 }
 
 /* Delete the middle node in queue */
