@@ -167,21 +167,31 @@ bool q_delete_dup(struct list_head *head)
     struct list_head *current = head->next, *remove;
 
     while (current != head) {
-        const element_t *cur_ele = list_entry(current, element_t, list);
+        element_t *cur_ele = list_entry(current, element_t, list);
 
-
-        for (remove = current->next; remove != head; remove = remove->next) {
+        remove = current->next;
+        bool check = false;
+        while (remove != head) {
             element_t *remv_ele = list_entry(remove, element_t, list);
 
-
             if (!strcmp(remv_ele->value, cur_ele->value)) {
-                remove = remove->prev;
-                list_del(remove->next);
+                // element_t *node = remove;
+                list_del(remove);
+                remove = remove->next;
                 free(remv_ele);
+                check = true;
+            } else {
+                // remove = remove->next;
+                break;
             }
         }
-
-        current = current->next;
+        if (check) {
+            list_del(current);
+            current = current->next;
+            free(cur_ele);
+        } else {
+            current = current->next;
+        }
     }
 
 
