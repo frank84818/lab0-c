@@ -18,8 +18,6 @@ struct list_head *mergesort(struct list_head *, bool);
 struct list_head *merge2SortedLists(struct list_head *,
                                     struct list_head *,
                                     bool);
-
-
 /* Create an empty queue */
 struct list_head *q_new()
 {
@@ -59,7 +57,7 @@ void q_free(struct list_head *head)
 }
 
 /* Insert an element at head of queue */
-bool q_insert_head(struct list_head *head, const char *s)
+bool q_insert_head(struct list_head *head, char *s)
 {
     if (!head)
         return false;
@@ -71,13 +69,15 @@ bool q_insert_head(struct list_head *head, const char *s)
         return false;
     }
     new_e->value = sdup;
+    char *p = s;
+    *p++ = *s++;
     list_add(&new_e->list, head);
 
     return true;
 }
 
 /* Insert an element at tail of queue */
-bool q_insert_tail(struct list_head *head, const char *s)
+bool q_insert_tail(struct list_head *head, char *s)
 {
     if (!head)
         return false;
