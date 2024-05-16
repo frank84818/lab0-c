@@ -25,7 +25,6 @@ struct list_head *q_new()
 {
     struct list_head *head = malloc(sizeof(struct list_head) * 1);
     if (!head) {
-        // free(head);
         return NULL;
     }
     INIT_LIST_HEAD(head);
@@ -60,50 +59,28 @@ void q_free(struct list_head *head)
 }
 
 /* Insert an element at head of queue */
-bool q_insert_head(struct list_head *head, char *s)
+bool q_insert_head(struct list_head *head, const char *s)
 {
     if (!head)
         return false;
     element_t *new_e = (element_t *) malloc(sizeof(element_t) * 1);
-    if (!new_e) {
+    char *sdup = strdup(s);
+    if (!new_e || !sdup) {
         free(new_e);
+        free(sdup);
         return false;
     }
-    INIT_LIST_HEAD(&new_e->list);
-
-    /*
-    The error msg implies there are some problemes about the lifetime of pointer
-    to char s. If I just assign the value of s to new_e->value, new_e->value
-    will point to a memory location which will be free after q_insert_head
-    function.
-    */
-    // new_e->value = s; // Error msg: Need to allocate and copy string for new
-
-    /*
-    Copy s and assign to new_e->value
-    */
-    size_t len = 0;
-    while (s[len])
-        len++;
-    new_e->value = malloc(sizeof(*s) * (len + 1));
-    if (!new_e->value) {
-        q_release_element(new_e);
-        return false;
-    }
-    char *iter = new_e->value;
-    while (*s) {
-        *iter++ = *s++;
-    }
-    *iter = '\0';  // Add string end
-
+    new_e->value = sdup;
     list_add(&new_e->list, head);
 
     return true;
 }
 
 /* Insert an element at tail of queue */
-bool q_insert_tail(struct list_head *head, char *s)
+bool q_insert_tail(struct list_head *head, const char *s)
 {
+    if (!head)
+        return false;
     return q_insert_head(head->prev, s);
 }
 
@@ -189,7 +166,7 @@ bool q_delete_dup(struct list_head *head)
                 // element_t *node = remove;
                 list_del(remove);
                 remove = remove->next;
-                free(remv_ele);
+                q_release_element(remv_ele);
                 check = true;
             } else {
                 // remove = remove->next;
@@ -199,7 +176,7 @@ bool q_delete_dup(struct list_head *head)
         if (check) {
             list_del(current);
             current = current->next;
-            free(cur_ele);
+            q_release_element(cur_ele);
         } else {
             current = current->next;
         }
@@ -239,18 +216,20 @@ void q_reverse(struct list_head *head)
     if (!head || list_empty(head))
         return;
 
-    int size = q_size(head);
-    struct list_head *prev = head->prev;
-    struct list_head *cur = head;
+    // int size = q_size(head);
+    struct list_head *node, *safe;
 
-    for (int i = 0; i < size - 1; i++) {
-        struct list_head *node = prev;
-        prev = node->prev;
+    // for (int i = 0; i < size - 1; i++) {
+    //     struct list_head *node = prev;
+    //     prev = node->prev;
 
-        list_del(node);
-        list_add(node, cur);
+    //     list_del(node);
+    //     list_add(node, cur);
 
-        cur = cur->next;
+    //     cur = cur->next;
+    // }
+    list_for_each_safe (node, safe, head) {
+        list_move(node, head);
     }
 }
 
@@ -275,8 +254,7 @@ void q_reverseK(struct list_head *head, int k)
             struct list_head *node = tail;
             tail = tail->prev;
 
-            list_del(node);
-            list_add(node, cur);
+            list_move(node, cur);
 
             cur = cur->next;
         }
@@ -364,19 +342,18 @@ int q_ascend(struct list_head *head)
         return 0;
     if (head->next == head->prev)
         return 1;
+    element_t *standard, *compare, *safe;
 
-    struct list_head *cur = head->next, *next = cur->next;
-    while (next != head) {
-        const element_t *cur_ele = list_entry(cur, element_t, list);
-        const element_t *next_ele = list_entry(next, element_t, list);
-
-        if (strcmp(cur_ele->value, next_ele->value) > 0) {
-            list_del(next);
-            // q_release_element(next_ele);
-            next = cur->next;
+    for (standard = list_entry(head->prev, element_t, list),
+        compare = list_entry(standard->list.prev, element_t, list),
+        safe = list_entry(compare->list.prev, element_t, list);
+         &compare->list != head;
+         compare = safe, safe = list_entry(safe->list.prev, element_t, list)) {
+        if (strcmp(compare->value, standard->value) > 0) {
+            list_del(&compare->list);
+            q_release_element(compare);
         } else {
-            cur = next;
-            next = cur->next;
+            standard = compare;
         }
     }
 
@@ -395,18 +372,18 @@ int q_descend(struct list_head *head)
     if (head->next == head->prev)
         return 1;
 
-    struct list_head *cur = head->next, *next = cur->next;
-    while (next != head) {
-        const element_t *cur_ele = list_entry(cur, element_t, list);
-        const element_t *next_ele = list_entry(next, element_t, list);
+    element_t *standard, *compare, *safe;
 
-        if (strcmp(cur_ele->value, next_ele->value) < 0) {
-            list_del(next);
-            // q_release_element(next_ele);
-            next = cur->next;
+    for (standard = list_entry(head->prev, element_t, list),
+        compare = list_entry(standard->list.prev, element_t, list),
+        safe = list_entry(compare->list.prev, element_t, list);
+         &compare->list != head;
+         compare = safe, safe = list_entry(safe->list.prev, element_t, list)) {
+        if (strcmp(compare->value, standard->value) < 0) {
+            list_del(&compare->list);
+            q_release_element(compare);
         } else {
-            cur = next;
-            next = cur->next;
+            standard = compare;
         }
     }
 
@@ -434,23 +411,22 @@ int q_merge(struct list_head *head, bool descend)
          next = next->next) {
         queue_contex_t *next_qctx = list_entry(next, queue_contex_t, chain);
 
-        struct list_head *cur = first_qctx->q->next,
-                         *merged = next_qctx->q->next;
+        struct list_head *cur = first_qctx->q->next;
+        //  *merged = next_qctx->q->next;
 
-        while (cur != first_qctx->q && merged != next_qctx->q) {
+        while (cur != first_qctx->q && !list_empty(next_qctx->q)) {
             const element_t *ele = list_entry(cur, element_t, list);
-            const element_t *m_ele = list_entry(merged, element_t, list);
+            element_t *m_ele = list_first_entry(next_qctx->q, element_t, list);
 
             if ((cmpr * strcmp(m_ele->value, ele->value)) <= 0) {
-                list_del_init(merged);
-                list_add(merged, cur->prev);
+                list_move(&m_ele->list, cur->prev);
                 cur = cur->prev;
             } else {
                 cur = cur->next;
             }
-
-            merged = next_qctx->q->next;
         }
+
+        list_splice_tail_init(next_qctx->q, first_qctx->q);
     }
 
 
